@@ -1,9 +1,11 @@
-package com.algaworks.algamoney.api.resource;
+package com.algaworks.algamoney.api.controller;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -21,21 +23,22 @@ import com.algaworks.algamoney.api.model.Categoria;
 import com.algaworks.algamoney.api.repository.CategoriaRepository;
 
 @RestController
-@RequestMapping("/categorias")
-public class CategoriaResource {
+
+public class CategoriaController {
 	
 	// injeta repositório
 	@Autowired
 	private CategoriaRepository categoriaRepository;
 	
-	@GetMapping
+
+	@RequestMapping(value="/categorias", method = RequestMethod.GET)
 	// lista todas as categorias
 	public List<Categoria> listar(){
 		return categoriaRepository.findAll();
 	}
 	
-	@PostMapping
 	// insere no bd
+	@RequestMapping(value="/categorias", method = RequestMethod.POST)
 	public ResponseEntity<Categoria> criar(@RequestBody Categoria categoria, HttpServletResponse response) {
 		Categoria categoriaSalva = categoriaRepository.save(categoria);
 		
@@ -50,9 +53,38 @@ public class CategoriaResource {
 		return ResponseEntity.created(uri).body(categoriaSalva);
 	}
 	
-	@GetMapping("/{codigo}")
+
+	@RequestMapping(value="/categorias/{codigo}", method = RequestMethod.GET)
 	// o pathvariable é para indicar que o parâmetro refere-se ao código
-	public Categoria buscaPeloCodigo(@PathVariable Long codigo) {
-		return this.categoriaRepository.findById(codigo).orElse(null);
+	public ResponseEntity<Categoria> buscarPeloCodigo(@PathVariable Long codigo) {
+		Optional<Categoria> categoria = this.categoriaRepository.findById(codigo);
+		return categoria.isPresent() ? 
+				ResponseEntity.ok(categoria.get()) : ResponseEntity.notFound().build();	
+	}
+	
+	//update
+	@RequestMapping(value="/categorias/{codigo}", method = RequestMethod.PUT)
+	public ResponseEntity<Categoria> atualizarCategoria(@PathVariable Long codigo, @Valid @RequestBody Categoria newCategoria){
+		Optional<Categoria> oldCategoria = categoriaRepository.findById(codigo);
+		if(oldCategoria.isPresent()) {
+			Categoria categoria = oldCategoria.get();
+			categoria.setNome(newCategoria.getNome());
+			categoriaRepository.save(categoria);
+			return new ResponseEntity<Categoria>(categoria, HttpStatus.OK);
+		} else {
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}
+	}
+	
+	//delete
+	@RequestMapping(value="/categorias/{codigo}", method = RequestMethod.DELETE)
+	public ResponseEntity<Object> deletarCategoria(@PathVariable Long codigo){
+		Optional<Categoria> categoria = categoriaRepository.findById(codigo);
+		if(categoria.isPresent()) {
+			categoriaRepository.delete(categoria.get());
+			return new ResponseEntity<>(HttpStatus.OK);
+		} else {
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}
 	}
 }
